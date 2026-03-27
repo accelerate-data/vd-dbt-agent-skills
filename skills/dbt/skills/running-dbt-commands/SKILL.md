@@ -1,53 +1,79 @@
 ---
 name: running-dbt-commands
-description: Formats and executes dbt CLI commands, selects the correct dbt executable, and structures command parameters. Use when running models, tests, builds, compiles, or show queries via dbt CLI. Use when unsure which dbt executable to use or how to format command parameters.
+description: Formats and executes dbt CLI commands via uv against Microsoft Fabric Spark lakehouses. Use when running models, tests, builds, compiles, or show queries via dbt CLI. Use when unsure how to format command parameters or which target to use (vd_dev, vd_dep, prod).
 user-invocable: false
 metadata:
-  author: dbt-labs
+  author: accelerate-data
 ---
 
 # Running dbt Commands
 
+## Execution Pattern
+
+All dbt commands run through `uv` with the `.env` file for Fabric credentials:
+
+```bash
+uv run --env-file .env dbt <command> --target <target>
+```
+
+The `vd_dev` target uses `vdstudio_oauth` authentication — the adapter fetches the OAuth token from VD Studio via `VD_STUDIO_TOKEN_URL` and `VD_STUDIO_USER_ID` (both set in `.env`). No manual token refresh is needed.
+
+## Targets
+
+| Target | When to use |
+|--------|-------------|
+| `vd_dev` | **Default.** Local development iteration — fast, sub-minute feedback via Livy |
+| `vd_dep` | Deployment validation (runs inside Fabric notebook) |
+| `prod` | Production scheduled runs (runs inside Fabric notebook) |
+
+If the user does not specify a target, always use `--target vd_dev`.
+
 ## Preferences
 
-1. **Use MCP tools if available** (`dbt_build`, `dbt_run`, `dbt_show`, etc.) - they handle paths, timeouts, and formatting automatically
-2. **Use `build` instead of `run` or `test`** - `test` doesn't refresh the model, so testing a model change requires `build`. `build` does a `run` and a `test` of each node (model, seed, snapshot) in the order of the DAG
-3. **Always use `--quiet`** with `--warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'` to reduce output while catching selector typos
-4. **Always use `--select`** - never run the entire project without explicit user approval
+1. **Use `build` instead of `run` or `test`** — `test` doesn't refresh the model, so testing a model change requires `build`. `build` does a `run` and a `test` of each node (model, seed, snapshot) in the order of the DAG
+2. **Always use `--quiet`** with `--warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'` to reduce output while catching selector typos
+3. **Always use `--select`** — never run the entire project without explicit user approval
 
 ## Quick Reference
 
 ```bash
-# Standard command pattern
-dbt build --select my_model --quiet --warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'
+# Standard command pattern (default target: vd_dev)
+uv run --env-file .env dbt build --select my_model --target vd_dev --quiet --warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'
+
+# Run all models
+uv run --env-file .env dbt run --target vd_dev
 
 # Preview model output
-dbt show --select my_model --limit 10
+uv run --env-file .env dbt show --select my_model --target vd_dev --limit 10
 
 # Run inline SQL query
-dbt show --inline "select * from {{ ref('orders') }}" --limit 5
+uv run --env-file .env dbt show --inline "select * from {{ ref('orders') }}" --target vd_dev --limit 5
 
 # With variables (JSON format for multiple)
-dbt build --select my_model --vars '{"key": "value"}'
+uv run --env-file .env dbt build --select my_model --target vd_dev --vars '{"key": "value"}'
 
 # Full refresh for incremental models
-dbt build --select my_model --full-refresh
+uv run --env-file .env dbt build --select my_model --target vd_dev --full-refresh
 
 # List resources before running
-dbt list --select my_model+ --resource-type model
+uv run --env-file .env dbt list --select my_model+ --target vd_dev --resource-type model
+
+# Deployment validation
+uv run --env-file .env dbt build --select my_model --target vd_dep --quiet
+
+# Production run
+uv run --env-file .env dbt run --target prod
 ```
 
-## dbt CLI Flavors
+## dbt CLI — uv Only
 
-Three CLIs exist. **Ask the user which one if unsure.**
+This project uses **dbt Core** via `uv` with the `vd-dbt-fabricspark` adapter. Do not use `dbtf`, dbt Fusion, or dbt Cloud CLI.
 
-| Flavor | Location | Notes |
-|--------|----------|-------|
-| **dbt Core** | Python venv | `pip show dbt-core` or `uv pip show dbt-core` |
-| **dbt Fusion** | `~/.local/bin/dbt` or `dbtf` | Faster and has stronger SQL comprehension |
-| **dbt Cloud CLI** | `~/.local/bin/dbt` | Go-based, runs on platform |
-
-**Common setup:** Core in venv + Fusion at `~/.local/bin`. Running `dbt` uses Core. Use `dbtf` or `~/.local/bin/dbt` for Fusion.
+```bash
+# Verify installation
+uv pip show dbt-core
+uv pip show vd-dbt-fabricspark
+```
 
 ## Selectors
 
@@ -146,22 +172,16 @@ dbt build --select my_model --defer --state prod-artifacts
 dbt build --select my_model --defer --state prod-artifacts --favor-state
 ```
 
-## Static Analysis (Fusion Only)
-
-Override SQL analysis for models with dynamic SQL or unrecognized UDFs:
-
-```bash
-dbt run --static-analysis=off
-dbt run --static-analysis=unsafe
-```
-
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Using `test` after model change | Use `build` - test doesn't refresh the model |
+| Running `dbt` directly without `uv run --env-file .env` | Always use `uv run --env-file .env dbt ...` — env vars are required |
+| Forgetting `--target vd_dev` | Always specify the target explicitly |
+| Using `test` after model change | Use `build` — test doesn't refresh the model |
 | Running without `--select` | Always specify what to run |
 | Using `--quiet` without warn-error | Add `--warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'` |
-| Running `dbt` expecting Fusion when we are in a venv | Use `dbtf` or `~/.local/bin/dbt` |
-| Adding LIMIT to SQL in `dbt_show` | Use `limit` parameter instead |
+| Adding LIMIT to SQL in `dbt show` | Use `--limit` flag instead |
 | Vars with special characters | Pass as simple string, no `\` or `\n` |
+| OAuth token errors (401) | Check `VD_STUDIO_TOKEN_URL` and `VD_STUDIO_USER_ID` are set in `.env` — adapter fetches token automatically |
+| Livy session timeout | Sessions are reused via `/tmp/livy-session-id.txt` — delete the file to force a new session |

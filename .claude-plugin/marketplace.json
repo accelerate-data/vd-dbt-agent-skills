@@ -1,10 +1,9 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "dbt-agent-marketplace",
-  "description": "Skills for working with dbt Core and the dbt Fusion engine - analytics engineering, data modeling, semantic layer, and dbt platform (fka dbt Cloud) operations",
+  "name": "vd-dbt-agent-marketplace",
+  "description": "Skills for working with dbt on Microsoft Fabric Spark — analytics engineering, local execution via Livy, profile management, and dbt platform operations",
   "owner": {
-    "name": "dbt Labs",
-    "email": "support@getdbt.com"
+    "name": "accelerate-data"
   },
   "plugins": [
     {
@@ -21,6 +20,11 @@
       "name": "dbt-extras",
       "description": "Miscellaneous skills for dbt.",
       "source": "./skills/dbt-extras"
+    },
+    {
+      "name": "vd-dbt",
+      "description": "Skills for running dbt on Microsoft Fabric Spark — profile management, local execution with OAuth via Livy, and deployment targets (vd_dev, vd_dep, prod).",
+      "source": "./skills/vd-dbt"
     }
   ]
 }

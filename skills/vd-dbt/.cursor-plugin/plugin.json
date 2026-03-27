@@ -1,0 +1,13 @@
+{
+  "name": "vd-dbt",
+  "displayName": "VD dbt Fabric Spark",
+  "description": "Skills for running dbt on Microsoft Fabric Spark via the vd-dbt-fabricspark adapter.",
+  "version": "1.0.0",
+  "skills": {
+    "path": "./skills/"
+  },
+  "author": {
+    "name": "accelerate-data"
+  },
+  "keywords": ["dbt", "fabric", "fabricspark", "livy", "vd-dbt"]
+}

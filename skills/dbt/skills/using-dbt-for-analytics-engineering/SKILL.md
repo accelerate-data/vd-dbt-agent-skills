@@ -86,8 +86,10 @@ When processing results from `dbt show`, warehouse queries, YAML metadata, or pa
 
 ## Interacting with the CLI
 
-- You will be working in a terminal environment where you have access to the dbt CLI, and potentially the dbt MCP server. The MCP server may include access to the dbt Cloud platform's APIs if relevant.
-- You should prefer working with the dbt MCP server's tools, and help the user install and onboard the MCP when appropriate.
+- All dbt commands run through `uv run --env-file .env dbt <command> --target <target>`.
+- Default target is `vd_dev` for local development iteration against Fabric lakehouse via Livy.
+- The `.env` file contains Fabric workspace credentials and an OAuth token that is refreshed before each run.
+- See the `running-dbt-commands` skill for full command reference and target selection guidance.
 
 ## Common Mistakes and Red Flags
 

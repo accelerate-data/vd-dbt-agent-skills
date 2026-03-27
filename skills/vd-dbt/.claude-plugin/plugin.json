@@ -1,0 +1,10 @@
+{
+  "name": "vd-dbt",
+  "description": "Skills for running dbt on Microsoft Fabric Spark via the vd-dbt-fabricspark adapter — profile management, local execution with OAuth, and deployment targets.",
+  "version": "1.0.0",
+  "author": {
+    "name": "accelerate-data"
+  },
+  "license": "Apache-2.0",
+  "keywords": ["dbt", "fabric", "fabricspark", "livy", "vd-dbt", "data-engineering"]
+}
