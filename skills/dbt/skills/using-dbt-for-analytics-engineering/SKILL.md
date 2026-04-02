@@ -87,7 +87,7 @@ When processing results from `dbt show`, warehouse queries, YAML metadata, or pa
 ## Interacting with the CLI
 
 - All dbt commands run through `uv run --env-file .env dbt <command> --target <target>`.
-- Default target is `vd_dev` for local development iteration against Fabric lakehouse via Livy.
+- Default target is `ephemeral_dev` for local development iteration against Fabric lakehouse via Livy.
 - The `.env` file contains Fabric workspace credentials and an OAuth token that is refreshed before each run.
 - See the `running-dbt-commands` skill for full command reference and target selection guidance.
 

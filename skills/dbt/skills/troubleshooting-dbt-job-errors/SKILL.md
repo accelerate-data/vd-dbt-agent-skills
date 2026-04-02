@@ -13,7 +13,7 @@ Systematically diagnose and resolve dbt job failures — both local (via `uv run
 ## When to Use
 
 - A `uv run --env-file .env dbt ...` command failed locally
-- A Fabric notebook dbt run failed in deployment (`vd_dep` or `prod` target)
+- A Fabric notebook dbt run failed in deployment (`ephemeral_dep` or `prod` target)
 - Intermittent job failures that are hard to reproduce
 - Error messages that don't clearly indicate the problem
 - Post-merge failures where a recent change may have caused the issue
@@ -62,7 +62,7 @@ flowchart TD
 
 ## Step 1: Gather Job Run Information
 
-### For Local Runs (vd_dev target)
+### For Local Runs (ephemeral_dev target)
 
 Check the terminal output and run results:
 
@@ -77,7 +77,7 @@ cat logs/dbt.log | tail -100
 cat /tmp/livy-session-id.txt
 ```
 
-### For Fabric Notebook Runs (vd_dep / prod targets)
+### For Fabric Notebook Runs (ephemeral_dep / prod targets)
 
 Ask the user for:
 
@@ -137,14 +137,14 @@ Ask the user for:
 
 1. **Get the test SQL**
    ```bash
-   uv run --env-file .env dbt compile --select project_name.folder1.folder2.test_unique_name --target vd_dev --output json
+   uv run --env-file .env dbt compile --select project_name.folder1.folder2.test_unique_name --target ephemeral_dev --output json
    ```
-   the full path for the test can be found with a `uv run --env-file .env dbt ls --resource-type test --target vd_dev` command
+   the full path for the test can be found with a `uv run --env-file .env dbt ls --resource-type test --target ephemeral_dev` command
 
 
 2. **Query the failing test's underlying data:**
    ```bash
-   uv run --env-file .env dbt show --inline "<query_from_the_test_SQL>" --target vd_dev --output json
+   uv run --env-file .env dbt show --inline "<query_from_the_test_SQL>" --target ephemeral_dev --output json
    ```
 
 
@@ -204,9 +204,9 @@ Commit this document to the repository so findings aren't lost.
 | Check dbt logs | `cat logs/dbt.log \| tail -100` |
 | Check recent git changes | `git log --oneline -20` |
 | Parse project | `uv run --env-file .env dbt parse` |
-| Compile specific model | `uv run --env-file .env dbt compile --select model_name --target vd_dev` |
-| Query data | `uv run --env-file .env dbt show --inline "SELECT ..." --target vd_dev --output json` |
-| Run specific test | `uv run --env-file .env dbt test --select test_name --target vd_dev` |
+| Compile specific model | `uv run --env-file .env dbt compile --select model_name --target ephemeral_dev` |
+| Query data | `uv run --env-file .env dbt show --inline "SELECT ..." --target ephemeral_dev --output json` |
+| Run specific test | `uv run --env-file .env dbt test --select test_name --target ephemeral_dev` |
 | Force new Livy session | `rm /tmp/livy-session-id.txt` then retry |
 | Verify adapter | `uv pip show vd-dbt-fabricspark` |
 

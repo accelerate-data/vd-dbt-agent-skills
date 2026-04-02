@@ -1,6 +1,6 @@
 ---
 name: running-dbt-commands
-description: Formats and executes dbt CLI commands via uv against Microsoft Fabric Spark lakehouses. Use when running models, tests, builds, compiles, or show queries via dbt CLI. Use when unsure how to format command parameters or which target to use (vd_dev, vd_dep, prod).
+description: Formats and executes dbt CLI commands via uv against Microsoft Fabric Spark lakehouses. Use when running models, tests, builds, compiles, or show queries via dbt CLI. Use when unsure how to format command parameters or which target to use (ephemeral_dev, ephemeral_dep, prod).
 user-invocable: false
 metadata:
   author: accelerate-data
@@ -16,17 +16,17 @@ All dbt commands run through `uv` with the `.env` file for Fabric credentials:
 uv run --env-file .env dbt <command> --target <target>
 ```
 
-The `vd_dev` target uses `vdstudio_oauth` authentication — the adapter fetches the OAuth token from VD Studio via `VD_STUDIO_TOKEN_URL` and `VD_STUDIO_USER_ID` (both set in `.env`). No manual token refresh is needed.
+The `ephemeral_dev` target uses `vdstudio_oauth` authentication — the adapter fetches the OAuth token from VD Studio via `VD_STUDIO_TOKEN_URL` and `VD_STUDIO_USER_ID` (both set in `.env`). No manual token refresh is needed.
 
 ## Targets
 
 | Target | When to use |
 |--------|-------------|
-| `vd_dev` | **Default.** Local development iteration — fast, sub-minute feedback via Livy |
-| `vd_dep` | Deployment validation (runs inside Fabric notebook) |
+| `ephemeral_dev` | **Default.** Local development iteration — fast, sub-minute feedback via Livy |
+| `ephemeral_dep` | Deployment validation (runs inside Fabric notebook) |
 | `prod` | Production scheduled runs (runs inside Fabric notebook) |
 
-If the user does not specify a target, always use `--target vd_dev`.
+If the user does not specify a target, always use `--target ephemeral_dev`.
 
 ## Preferences
 
@@ -37,29 +37,29 @@ If the user does not specify a target, always use `--target vd_dev`.
 ## Quick Reference
 
 ```bash
-# Standard command pattern (default target: vd_dev)
-uv run --env-file .env dbt build --select my_model --target vd_dev --quiet --warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'
+# Standard command pattern (default target: ephemeral_dev)
+uv run --env-file .env dbt build --select my_model --target ephemeral_dev --quiet --warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'
 
 # Run all models
-uv run --env-file .env dbt run --target vd_dev
+uv run --env-file .env dbt run --target ephemeral_dev
 
 # Preview model output
-uv run --env-file .env dbt show --select my_model --target vd_dev --limit 10
+uv run --env-file .env dbt show --select my_model --target ephemeral_dev --limit 10
 
 # Run inline SQL query
-uv run --env-file .env dbt show --inline "select * from {{ ref('orders') }}" --target vd_dev --limit 5
+uv run --env-file .env dbt show --inline "select * from {{ ref('orders') }}" --target ephemeral_dev --limit 5
 
 # With variables (JSON format for multiple)
-uv run --env-file .env dbt build --select my_model --target vd_dev --vars '{"key": "value"}'
+uv run --env-file .env dbt build --select my_model --target ephemeral_dev --vars '{"key": "value"}'
 
 # Full refresh for incremental models
-uv run --env-file .env dbt build --select my_model --target vd_dev --full-refresh
+uv run --env-file .env dbt build --select my_model --target ephemeral_dev --full-refresh
 
 # List resources before running
-uv run --env-file .env dbt list --select my_model+ --target vd_dev --resource-type model
+uv run --env-file .env dbt list --select my_model+ --target ephemeral_dev --resource-type model
 
 # Deployment validation
-uv run --env-file .env dbt build --select my_model --target vd_dep --quiet
+uv run --env-file .env dbt build --select my_model --target ephemeral_dep --quiet
 
 # Production run
 uv run --env-file .env dbt run --target prod
@@ -177,7 +177,7 @@ dbt build --select my_model --defer --state prod-artifacts --favor-state
 | Mistake | Fix |
 |---------|-----|
 | Running `dbt` directly without `uv run --env-file .env` | Always use `uv run --env-file .env dbt ...` — env vars are required |
-| Forgetting `--target vd_dev` | Always specify the target explicitly |
+| Forgetting `--target ephemeral_dev` | Always specify the target explicitly |
 | Using `test` after model change | Use `build` — test doesn't refresh the model |
 | Running without `--select` | Always specify what to run |
 | Using `--quiet` without warn-error | Add `--warn-error-options '{"error": ["NoNodesForSelectionCriteria"]}'` |

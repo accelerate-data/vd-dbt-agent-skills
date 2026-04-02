@@ -23,7 +23,7 @@
     },
     {
       "name": "vd-dbt",
-      "description": "Skills for running dbt on Microsoft Fabric Spark — profile management, local execution with OAuth via Livy, and deployment targets (vd_dev, vd_dep, prod).",
+      "description": "Skills for running dbt on Microsoft Fabric Spark — profile management, local execution with OAuth via Livy, and deployment targets (ephemeral_dev, ephemeral_dep, prod).",
       "source": "./skills/vd-dbt"
     }
   ]
