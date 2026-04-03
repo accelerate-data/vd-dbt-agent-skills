@@ -51,20 +51,29 @@ Before generating a notebook, collect:
 |-------------|-----------------|---------------------|
 | dbt command | _(from user request)_ | Yes |
 | Notebook name | _(derived from command)_ | — |
-| Repo URL | `REPO_URL` | Yes |
-| Repo branch | _(user input, default "main")_ | Yes |
-| GitHub App ID (KV secret name) | `GITHUB_APP_ID` | Yes |
-| GitHub Installation ID (KV secret name) | `GITHUB_INSTALLATION_ID` | Yes |
-| GitHub PEM secret (KV secret name) | `GITHUB_PEM_SECRET` | Yes |
-| Key Vault URL | `AZURE_KEYVAULT_URL` | Yes |
-| Lakehouse name | `LAKEHOUSE` | No (leave empty) |
-| Lakehouse ID | `LAKEHOUSE_ID` | No (leave empty) |
-| Workspace ID | `WORKSPACE_ID` | No (leave empty) |
-| Workspace name | `WORKSPACE_NAME` | No (leave empty) |
+| Repo URL | `REPO_URL` | Yes — resolve from `.env` |
+| Repo branch | `"main"` | Yes — always `"main"` for the notebook default |
+| GitHub App ID (KV secret name) | `GITHUB_APP_ID` | Yes — resolve from `.env` |
+| GitHub Installation ID (KV secret name) | `GITHUB_INSTALLATION_ID` | Yes — resolve from `.env` |
+| GitHub PEM secret (KV secret name) | `GITHUB_PEM_SECRET` | Yes — resolve from `.env` |
+| Key Vault URL | `AZURE_KEYVAULT_URL` | Yes — resolve from `.env` |
+| Lakehouse name | — | No (leave empty) |
+| Lakehouse ID | — | No (leave empty) |
+| Workspace ID | — | No (leave empty) |
+| Workspace name | — | No (leave empty) |
+| Schema name | — | No (leave empty — hardcoded in profiles.yml) |
 
-**Read defaults from the intent's `.env` file.** Run `cat .env` or `grep` for the variables above. All GitHub App fields (`GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, `GITHUB_PEM_SECRET`) are **Key Vault secret names** — the adapter fetches the actual values from Azure Key Vault at notebook runtime.
+**You MUST resolve values from `.env` before generating the notebook.** Run:
 
-**Default values matter.** These notebooks are meant to be scheduled — the parameter cell defaults are what Fabric uses when no pipeline overrides them. Always bake the command, repo URL, branch, Key Vault URL, and GitHub App secret names as defaults. Lakehouse/workspace coordinates are left empty because they are injected at runtime by the pipeline or set via the notebook's lakehouse attachment.
+```bash
+grep -E "^(REPO_URL|GITHUB_APP_ID|GITHUB_INSTALLATION_ID|GITHUB_PEM_SECRET|AZURE_KEYVAULT_URL)=" .env
+```
+
+Then use the actual values as defaults in the parameter cell. **Never leave these fields empty** — the notebook must work standalone when scheduled on Fabric without any pipeline parameter overrides.
+
+**Branch handling:**
+- **Notebook default** (`repo_branch`): always `"main"` — production notebooks run from main.
+- **Deployment test run** (`-P` override): use the **current intent branch** (e.g. `intent/new-intent-49f91ba2`), not main. This ensures you test the code that's currently being developed. The intent branch is available via `git rev-parse --abbrev-ref HEAD`.
 
 If the user says "deploy my fact group X", the command is `dbt run --select tag:X`.
 If the user says "create a test notebook", the command is `dbt test` (or with selectors).
@@ -280,17 +289,25 @@ uv run --env-file .env fab set "$WORKSPACE_NAME.Workspace/{notebook_name}.Notebo
 
 ### 5. Test the Deployed Notebook
 
-Run the notebook to validate the deployment:
+**Important:** For test runs, override `repo_branch` with the **current intent branch** — never test against `main`. The notebook default is `main` (for production scheduling), but during deployment validation you must test the code on this branch.
 
 ```bash
-uv run --env-file .env fab job run {workspace_name}.Workspace/{notebook_name}.Notebook \
-  -P "lakehouse_name:string={lakehouse_name},lakehouse_id:string={lakehouse_id},workspace_id:string={workspace_id},workspace_name:string={workspace_name},schema_name:string=dbo" \
+# Get current intent branch and lakehouse coordinates from .env
+INTENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+WORKSPACE_NAME=$(grep "^WORKSPACE_NAME=" .env | cut -d= -f2)
+WORKSPACE_ID=$(grep "^WORKSPACE_ID=" .env | cut -d= -f2)
+LAKEHOUSE=$(grep "^LAKEHOUSE=" .env | cut -d= -f2)
+LAKEHOUSE_ID=$(grep "^LAKEHOUSE_ID=" .env | cut -d= -f2)
+
+# Run with intent branch + lakehouse overrides
+uv run --env-file .env fab job run "$WORKSPACE_NAME.Workspace/{notebook_name}.Notebook" \
+  -P "repo_branch:string=$INTENT_BRANCH,lakehouse_name:string=$LAKEHOUSE,lakehouse_id:string=$LAKEHOUSE_ID,workspace_id:string=$WORKSPACE_ID,workspace_name:string=$WORKSPACE_NAME" \
   --timeout 600
 ```
 
-Since command, repo, and GitHub App credentials are baked into the parameter cell defaults, you only need to pass the lakehouse/workspace coordinates as runtime overrides.
+Command, repo URL, and GitHub App credentials are already baked into the notebook defaults — only branch and lakehouse/workspace need runtime overrides.
 
-Check the result. If it fails, inspect logs and fix.
+Check the result. If it fails, the user must copy the error from the Fabric UI (the run API does not return error details).
 
 ## Naming Conventions
 
