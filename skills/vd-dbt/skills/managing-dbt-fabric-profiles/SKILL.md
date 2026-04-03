@@ -19,10 +19,11 @@ Set up and maintain `profiles.yml` for the `vd-dbt-fabricspark` adapter with thr
 | `ephemeral_dep` | `fabric_notebook` | Fabric notebook | Deployment validation |
 | `prod` | `fabric_notebook` | Fabric notebook | Production scheduled runs |
 
-All targets share the same Livy/Spark configuration. The **only** difference is the `authentication` method.
+All targets share the same Livy/Spark configuration. Differences:
 
-- `ephemeral_dev` uses `vdstudio_oauth` auth which reads `VD_STUDIO_TOKEN_URL` and `VD_STUDIO_USER_ID` from `.env` to obtain an OAuth token from the VD Studio web app. These are set automatically when a new intent is created. `VD_STUDIO_USER_ID` is updated each time a user logs in (single-user per intent).
-- `ephemeral_dep` and `prod` run inside Fabric notebooks where authentication is handled by the notebook runtime
+- `ephemeral_dev` uses `vdstudio_oauth` auth — reads `VD_STUDIO_TOKEN_URL` + `VD_STUDIO_USER_ID` from `.env`. Set automatically on intent creation. `VD_STUDIO_USER_ID` is updated on each user login (single-user per intent).
+- `ephemeral_dep` uses `fabric_notebook` auth — runs inside Fabric notebook runtime. Points to ephemeral workspace (dynamic via `env_var()`).
+- `prod` uses `fabric_notebook` auth — runs inside Fabric notebook runtime. Points to **domain workspace with hardcoded values** (not `env_var()`). Read `DOMAIN_*` variables from `.env` and write them as literal strings into `profiles.yml`.
 
 **Default target is `ephemeral_dev`** — local iteration is the primary use case.
 
@@ -41,6 +42,12 @@ All targets use `env_var()` for dynamic values. These must be present in the clo
 | `SCHEMA` | Default: `dbo` | `dbo` |
 | `DBT_JOB_NAME` | Default: `dbt_spark_job` | `dbt_spark_job` |
 | `VD_STUDIO_TOKEN_URL` | VD Studio token endpoint | `http://127.0.0.1:3238/az_token` |
+| `DOMAIN_WORKSPACE_ID` | Domain workspace GUID | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
+| `DOMAIN_WORKSPACE_NAME` | Domain workspace name | `sample_wp2` |
+| `DOMAIN_LAKEHOUSE_ID` | Domain lakehouse GUID | `12eff595-0528-4a26-923b-7676352f4423` |
+| `DOMAIN_LAKEHOUSE` | Domain lakehouse name | `ai_lake2` |
+| `DOMAIN_SCHEMA` | Domain schema | `dbo` |
+| `DOMAIN_LAKEHOUSE_SQL_ENDPOINT` | Domain SQL endpoint | `xyz.datawarehouse.fabric.microsoft.com` |
 
 ### Updated on each user login
 
@@ -104,21 +111,23 @@ dbt_fab_spark:
       connect_timeout: 500
       threads: 10
 
+    # prod target uses HARDCODED domain values — read DOMAIN_* from .env
+    # and write them as literal strings here (not env_var)
     prod:
       authentication: fabric_notebook
       endpoint: https://msitapi.fabric.microsoft.com/v1
-      workspaceid: "{{ env_var('WORKSPACE_ID') }}"
-      workspace_name: "{{ env_var('WORKSPACE_NAME') }}"
-      lakehouse: "{{ env_var('LAKEHOUSE') }}"
-      lakehouseid: "{{ env_var('LAKEHOUSE_ID') }}"
+      workspaceid: "<DOMAIN_WORKSPACE_ID>"
+      workspace_name: "<DOMAIN_WORKSPACE_NAME>"
+      lakehouse: "<DOMAIN_LAKEHOUSE>"
+      lakehouseid: "<DOMAIN_LAKEHOUSE_ID>"
       lakehouse_schemas_enabled: true
-      schema: "{{ env_var('SCHEMA') }}"
+      schema: "<DOMAIN_SCHEMA>"
       method: livy
       type: fabricspark
       reuse_livy_session: true
       session_id_file: ./.livy-session-id.txt
       spark_config:
-        name: "{{ env_var('DBT_JOB_NAME') }}"
+        name: dbt_spark_job
         driverCores: 4
         driverMemory: 28g
         executorCores: 4
@@ -136,11 +145,11 @@ The profile name in `profiles.yml` must match the `profile:` field in `dbt_proje
 
 ## Adding Missing Targets
 
-If any target is missing, add it under `dbt_fab_spark.outputs`. Use the same Spark/Livy config block — only change the `authentication` value:
+If any target is missing, add it under `dbt_fab_spark.outputs`. Use the same Spark/Livy config block with these differences:
 
-- `ephemeral_dev` → `authentication: vdstudio_oauth`
-- `ephemeral_dep` → `authentication: fabric_notebook`
-- `prod` → `authentication: fabric_notebook`
+- `ephemeral_dev` → `authentication: vdstudio_oauth`, dynamic `env_var()` values (ephemeral workspace)
+- `ephemeral_dep` → `authentication: fabric_notebook`, dynamic `env_var()` values (ephemeral workspace)
+- `prod` → `authentication: fabric_notebook`, **hardcoded** domain values (read `DOMAIN_*` from `.env`, write as literal strings)
 
 ## Common Issues
 
