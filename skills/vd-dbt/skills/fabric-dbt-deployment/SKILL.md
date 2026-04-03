@@ -264,12 +264,18 @@ uv run --env-file .env fab import {workspace_name}.Workspace/{notebook_name}.Not
   -i notebooks/{notebook_name}.Notebook -f
 ```
 
-After import, attach the default lakehouse:
+After import, **always** attach the default lakehouse. Without this, the notebook fails at runtime with `LakehouseWorkspaceId is not a valid GUID` (Fabric bug — requires explicit lakehouse attachment even though it's not used by dbt):
 
 ```bash
-uv run --env-file .env fab set {workspace_name}.Workspace/{notebook_name}.Notebook \
-  -q lakehouse \
-  -i '{"known_lakehouses": [{"id": "{lakehouse_id}"}], "default_lakehouse": "{lakehouse_id}", "default_lakehouse_name": "{lakehouse_name}", "default_lakehouse_workspace_id": "{workspace_id}"}'
+# Read lakehouse coordinates from .env
+WORKSPACE_NAME=$(grep "^WORKSPACE_NAME=" .env | cut -d= -f2)
+WORKSPACE_ID=$(grep "^WORKSPACE_ID=" .env | cut -d= -f2)
+LAKEHOUSE=$(grep "^LAKEHOUSE=" .env | cut -d= -f2)
+LAKEHOUSE_ID=$(grep "^LAKEHOUSE_ID=" .env | cut -d= -f2)
+
+# Attach lakehouse to notebook
+LAKEHOUSE_JSON="{\"known_lakehouses\": [{\"id\": \"$LAKEHOUSE_ID\"}], \"default_lakehouse\": \"$LAKEHOUSE_ID\", \"default_lakehouse_name\": \"$LAKEHOUSE\", \"default_lakehouse_workspace_id\": \"$WORKSPACE_ID\"}"
+uv run --env-file .env fab set "$WORKSPACE_NAME.Workspace/{notebook_name}.Notebook" -q lakehouse -i "$LAKEHOUSE_JSON" -f
 ```
 
 ### 5. Test the Deployed Notebook
